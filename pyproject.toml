@@ -1,0 +1,18 @@
+[project]
+name = "pybattery"
+version = "0.1.0"
+description = "A python-based off-grid battery manager"
+authors = [{ name = "Seb Martin" }]
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = []
+
+[tool.poetry]
+
+[tool.poetry.group.dev.dependencies]
+pdbpp = "^0.10.3"
+pyaml = "^25.1.0"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
