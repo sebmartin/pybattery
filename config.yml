@@ -1,0 +1,32 @@
+devices:
+  mppt:
+    description: Renogy Rover MPPT (Maximum Power Point Tracking) controller
+    type: renogy_rover
+    address: /dev/ttyUSB0
+    port: 1
+
+  thermo-exterior:
+    description: Exterior temperature sensor
+    type: ds12b20
+    gpio: 4
+
+  thermo-interior:
+    description: Interior temperature and humidity sensor
+    type: dht11
+    gpio: 17
+
+  display:
+    description: 16x2 LCD display
+    type: i2c_lcd
+    address: 0x27
+    gpio:
+      rs: 26
+      en: 19
+      d4: 13
+      d5: 6
+      d6: 5
+      d7: 11
+
+  # weather:
+  #   description: Weather station API
+  #   component: weather_station

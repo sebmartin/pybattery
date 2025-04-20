@@ -5,7 +5,7 @@ description = "A python-based off-grid battery manager"
 authors = [{ name = "Seb Martin" }]
 readme = "README.md"
 requires-python = ">=3.8"
-dependencies = []
+dependencies = ["adafruit-blinka (>=8.56.0,<9.0.0)", "pyrover @ git+https://github.com/sebmartin/pyrover.git", "adafruit-circuitpython-dht (>=4.0.7,<5.0.0)", "adafruit-circuitpython-charlcd (>=3.5.1,<4.0.0)", "setuptools (<70)"]
 
 [tool.poetry]
 
