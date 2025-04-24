@@ -1,6 +1,7 @@
 from typing import Any, Dict
 
 from pybattery.models.config import DeviceConfig
+from adafruit_dht import DHT11
 
 
 class Dht11Device:
@@ -8,30 +9,35 @@ class Dht11Device:
     Read temperature and humidity data from a DHT11 sensor.
     """
 
+    gpio: str
+
     def __init__(self, config: DeviceConfig) -> None:
-        pass
+        self.gpio = config.args.get("gpio", "D13")
+        self._sensor = None
+
+    @property
+    def sensor(self) -> DHT11:
+        import board
+
+        if not self._sensor:
+            pin = getattr(board, self.gpio, None)
+            self._sensor = DHT11(pin)
+        return self._sensor
 
     def read(self) -> Dict[str, Any]:
         """
         Read the temperature and humidity data from the DHT11 sensor.
         """
-        import board
-        import adafruit_dht
 
-        dht_device = adafruit_dht.DHT11(board.D13)
+        dht_device = self.sensor
         try:
-            temperature = dht_device.temperature
-            humidity = dht_device.humidity
-            return {"temperature": temperature, "humidity": humidity}
+            return {
+                "temperature": dht_device.temperature,
+                "humidity": dht_device.humidity,
+            }
         except RuntimeError as e:
             print(f"Error reading DHT11 sensor: {e}")
             return {}
-
-        # dht = adafruit_dht.DHT11(board.D13)
-        # return {
-        #     "temperature": dht.temperature,
-        #     "humidity": dht.humidity
-        # }
 
 
 Device = Dht11Device
