@@ -1,40 +1,55 @@
-from typing import Any, Dict
-
 from pybattery.models.config import DeviceConfig
+from adafruit_character_lcd.character_lcd import Character_LCD_Mono
 
-try:
-    import board
-    from board import pin
-    import digitalio
-    import adafruit_character_lcd.character_lcd as characterlcd
-
-    lcd_rs = digitalio.DigitalInOut(board.D26)
-    lcd_en = digitalio.DigitalInOut(board.D19)
-    lcd_d7 = digitalio.DigitalInOut(board.D11)
-    lcd_d6 = digitalio.DigitalInOut(board.D5)
-    lcd_d5 = digitalio.DigitalInOut(board.D6)
-    lcd_d4 = digitalio.DigitalInOut(board.D13)
-
-    lcd_columns = 16
-    lcd_rows = 2
-except (ImportError, NotImplementedError):
-    pass
+LCD_COLUMNS = 16
+LCD_ROWS = 2
 
 
 class LcdDevice:
     """Control a 16x2 LCD display."""
 
+    rs: int
+    en: int
+    d4: int
+    d5: int
+    d6: int
+    d7: int
+
     def __init__(self, config: DeviceConfig) -> None:
         """Initialize the LCD display."""
-        # self._lcd = characterlcd.Character_LCD_Mono(
-        #     lcd_rs, lcd_en, lcd_d4, lcd_d5, lcd_d6, lcd_d7, lcd_columns, lcd_rows
-        # )
-        # self._lcd.clear()
+        gpio = config.args.get("gpio", {})
+        self.rs = gpio.get("rs", 26)
+        self.en = gpio.get("en", 19)
+        self.d4 = gpio.get("d4", 13)
+        self.d5 = gpio.get("d5", 6)
+        self.d6 = gpio.get("d6", 5)
+        self.d7 = gpio.get("d7", 11)
+        self._lcd = None
+
+    @property
+    def lcd(self) -> Character_LCD_Mono:
+        """Return the LCD object."""
+        from digitalio import DigitalInOut
+        from adafruit_blinka.microcontroller.generic_linux.rpi_gpio_pin import Pin
+
+        if not self._lcd:
+            self._lcd = Character_LCD_Mono(
+                DigitalInOut(Pin(self.rs)),
+                DigitalInOut(Pin(self.en)),
+                DigitalInOut(Pin(self.d4)),
+                DigitalInOut(Pin(self.d5)),
+                DigitalInOut(Pin(self.d6)),
+                DigitalInOut(Pin(self.d7)),
+                LCD_COLUMNS,
+                LCD_ROWS,
+            )
+            self._lcd.clear()
+        return self._lcd
 
     def write(self, value: str) -> None:
         """Write a value to the LCD display."""
         # Placeholder for actual implementation
-        # self._lcd.message = str(value)
+        self.lcd.message = str(value)
 
 
 Device = LcdDevice
