@@ -1,7 +1,7 @@
 import argparse
 from enum import Enum
 import sys
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pybattery.device_types import list_device_types as _list_device_types
 from pybattery.models.config import Config
@@ -72,6 +72,33 @@ def list_device_types(device_types: Dict[str, type], **kwargs):
         )
 
 
+def list_gpio(config: Config, **kwargs):
+    """List all available GPIO pins on the board."""
+    try:
+        import board
+
+        def parse_gpio(gpio: Union[str, List[str]]):
+            return gpio if isinstance(gpio, list) else [gpio]
+
+        configured_gpios = {
+            gpio: device
+            for device, device_config in config.devices.items()
+            for gpio in parse_gpio(device_config.args.get("gpio", []))
+        }
+
+        print("Board identified as:", str(board.board_id))
+
+        gpio_pins = [pin for pin in dir(board) if not pin.startswith("_")]
+        print("Available GPIO pins:")
+        for pin in sorted(gpio_pins):
+            if configured_gpio := configured_gpios.get(pin):
+                print(f"- {pin} (used by {configured_gpio})")
+            else:
+                print(f"- {pin}")
+    except (ImportError, NotImplementedError):
+        print("Board module not available. GPIO pins cannot be listed.")
+
+
 def _parse_devices(
     config: Config, device_types: Dict[str, type]
 ) -> Tuple[Dict[str, ReadableDeviceType], Dict[str, WritableDeviceType]]:
@@ -84,7 +111,7 @@ def _parse_devices(
     }
     if unknown_devices := set(config.devices.keys()) - set(all_devices.keys()):
         print(f"Unknown devices found in config: {', '.join(unknown_devices)}", file=sys.stderr)
-        print("Device was not recognized as either a readable or writable device.", file=sys.stderr)
+        print("Devices were not recognized as either a readable or writable device.", file=sys.stderr)
 
     read_devices = {name: device for name, device in all_devices.items() if isinstance(device, ReadableDeviceType)}
     write_devices = {name: device for name, device in all_devices.items() if isinstance(device, WritableDeviceType)}
@@ -126,6 +153,7 @@ def main(config: Optional[Config] = None):
 
     subparsers.add_parser("list", help="List available devices")
     subparsers.add_parser("list-types", help="List available device types")
+    subparsers.add_parser("list-gpio", help="List available GPIO pins on the board")
 
     args = parser.parse_args().__dict__
     command = args.pop("command")
@@ -142,6 +170,7 @@ def main(config: Optional[Config] = None):
         "write": write,
         "list": list_devices,
         "list-types": list_device_types,
+        "list-gpio": list_gpio,
     }.get(command, lambda: parser.print_help())(**computed_args)
 
 
