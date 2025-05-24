@@ -1,0 +1,6 @@
+dbus-python==1.4.0
+minimalmodbus==1.0.2
+-e git+https://github.com/sebmartin/pybattery.git@68f57bc77479096ec366ccdc3e591ea0dd21fed5#egg=pybattery
+pyrover @ git+https://github.com/sebmartin/pyrover.git@1b97cd96931755e70593f90b65f97e4033a73a74
+pyserial==3.5
+PyYAML==6.0.2
