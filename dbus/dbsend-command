@@ -1,0 +1,1 @@
+dbus-send --system --print-reply   --dest=in.sebmart.pybattery   /in/sebmart/pybattery  in.sebmart.pybattery.ReadPin   int32:22
