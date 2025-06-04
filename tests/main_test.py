@@ -1,13 +1,17 @@
 import sys
 from textwrap import dedent
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 from unittest import mock
+from pybattery.output_writer import OutputFormat
 
 import pytest
 import yaml
+from yaml import Loader
+import json
 
 from pybattery.main import main
 from pybattery.models.config import Config, DeviceConfig
+from pybattery.models.device import Device
 from pybattery.models.utils import from_dict
 
 
@@ -35,20 +39,20 @@ def fake_config():
 
 @pytest.fixture(autouse=True)
 def mock_device_types():
-    with mock.patch("pybattery.main._list_device_types") as mock_list_device_types:
+    with mock.patch("pybattery.api.list_device_types") as mock_list_device_types:
 
-        class Device:
+        class FakeDevice(Device):
             def __init__(self, config: DeviceConfig):
-                self.config = config
+                super().__init__(config)
                 self.data = config.args.get("data", None)
 
-        class ReadDevice(Device):
+        class ReadDevice(FakeDevice):
             """Test read device"""
 
-            def read(self) -> Dict[str, Any]:
-                return {"data": self.data}
+            def read(self) -> Optional[Dict[str, Any]]:
+                    return {"data": self.data}
 
-        class WriteDevice(Device):
+        class WriteDevice(FakeDevice):
             """Test write device"""
 
             outputs: List[Any] = []
@@ -83,15 +87,13 @@ def test_list(fake_config, capsys):
         main(fake_config)
 
     captured = capsys.readouterr()
-    output = dedent(
-        """
-        Available devices:
-        - test-reader: Test read device
-        - test-writer: Test write device
-        - test-reader-writer: Test read-write device
-        """
-    )
-    assert output.strip() == captured.out.strip()
+    assert yaml.load(captured.out, Loader=Loader) == {
+        "devices": {
+            "test-reader": "Test read device",
+            "test-reader-writer": "Test read-write device",
+            "test-writer": "Test write device",
+        }
+    }, "Output should be valie YAML"
 
 
 def test_list_device_types(fake_config, capsys):
@@ -100,15 +102,13 @@ def test_list_device_types(fake_config, capsys):
         main(fake_config)
 
     captured = capsys.readouterr()
-    output = dedent(
-        """
-        Available device types:
-        - test_read_device_type: Test read device
-        - test_write_device_type: Test write device
-        - test_read_write_device_type: Test read-write device
-        """
-    )
-    assert output.strip() == captured.out.strip()
+    assert yaml.load(captured.out, Loader=Loader) == {
+        "device_types": {
+            "test_read_device_type": "Test read device",
+            "test_write_device_type": "Test write device",
+            "test_read_write_device_type": "Test read-write device",
+        }
+    }, "Output should be valid YAML"
 
 
 def test_read__one_device__default_format(fake_config, capsys):
@@ -121,25 +121,19 @@ def test_read__one_device__default_format(fake_config, capsys):
     assert output.strip() == captured.out.strip()
 
 
-@pytest.mark.parametrize("format", ["json", "yaml"])
+@pytest.mark.parametrize("format", [OutputFormat.JSON, OutputFormat.YAML])
 def test_read__one_device(format, fake_config, capsys):
-    test_args = ["main.py", "read", "test-reader", "-f", f"{format}"]
+    test_args = ["main.py", "read", "test-reader", "-f", format.value]
     with mock.patch.object(sys, "argv", test_args):
         main(fake_config)
 
     captured = capsys.readouterr()
-    if format == "json":
-        expected_output = dedent(
-            """
-            {
-                "data": "this is read-only data from the config"
-            }
-            """
-        )
-    elif format == "yaml":
-        expected_output = "data: this is read-only data from the config"
+    if format == OutputFormat.JSON:
+        data = json.loads(captured.out)
+    elif format == OutputFormat.YAML:
+        data = yaml.load(captured.out, Loader=Loader)
 
-    assert expected_output.strip() == captured.out.strip()
+    assert data == {'data': 'this is read-only data from the config'}
 
 
 def test_read__invalid_device(fake_config, capsys):

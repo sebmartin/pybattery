@@ -1,13 +1,15 @@
+from typing import Optional
 from pybattery.models.config import DeviceConfig
-from adafruit_character_lcd.character_lcd import Character_LCD_Mono
+from pybattery.models.device import Device
+
+from RPLCD.gpio import CharLCD
+from RPi import GPIO
 
 LCD_COLUMNS = 16
 LCD_ROWS = 2
 
-
-class LcdDevice:
+class LcdDevice(Device):
     """Control a 16x2 LCD display."""
-
     rs: int
     en: int
     d4: int
@@ -17,6 +19,8 @@ class LcdDevice:
 
     def __init__(self, config: DeviceConfig) -> None:
         """Initialize the LCD display."""
+        super().__init__(config)
+
         gpio = config.args.get("gpio", {})
         self.rs = gpio.get("rs", 26)
         self.en = gpio.get("en", 19)
@@ -24,24 +28,28 @@ class LcdDevice:
         self.d5 = gpio.get("d5", 6)
         self.d6 = gpio.get("d6", 5)
         self.d7 = gpio.get("d7", 11)
-        self._lcd = None
+
+        self._lcd: Optional[CharLCD] = None
+
 
     @property
-    def lcd(self) -> Character_LCD_Mono:
+    def lcd(self) -> CharLCD:
         """Return the LCD object."""
-        from digitalio import DigitalInOut
-        from adafruit_blinka.microcontroller.generic_linux.rpi_gpio_pin import Pin
 
         if not self._lcd:
-            self._lcd = Character_LCD_Mono(
-                DigitalInOut(Pin(self.rs)),
-                DigitalInOut(Pin(self.en)),
-                DigitalInOut(Pin(self.d4)),
-                DigitalInOut(Pin(self.d5)),
-                DigitalInOut(Pin(self.d6)),
-                DigitalInOut(Pin(self.d7)),
-                LCD_COLUMNS,
-                LCD_ROWS,
+            self._lcd = CharLCD(
+                numbering_mode=GPIO.BCM,
+                cols=LCD_COLUMNS,
+                rows=LCD_ROWS,
+                pin_rs=self.rs,
+                pin_e=self.en,
+                pins_data=[
+                    self.d4,
+                    self.d5,
+                    self.d6,
+                    self.d7,
+                ],
+                auto_linebreaks=False,
             )
             self._lcd.clear()
         return self._lcd
@@ -49,7 +57,9 @@ class LcdDevice:
     def write(self, value: str) -> None:
         """Write a value to the LCD display."""
         # Placeholder for actual implementation
-        self.lcd.message = str(value)
+        lines = value.split("\n", LCD_ROWS - 1)
+        self.lcd.clear()
+        self.lcd.write_string("\r\n".join(lines[:LCD_ROWS]))
 
 
 Device = LcdDevice

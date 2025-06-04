@@ -1,24 +1,53 @@
 import argparse
-from enum import Enum
-from typing import Optional
+import sys
+from typing import List, Optional
 
-
-from pybattery import api
-from pybattery.device_types import list_device_types as _list_device_types
+from pybattery.api import Api
 from pybattery.models.config import Config
+from pybattery.output_writer import OutputFormat, OutputWriter
 
 
-class ReadFormat(Enum):
-    """Enum for read formats."""
+def list_devices(api):
+    """List all available devices in the pybattery package."""
+    data = {
+        name: device.description
+        for name, device in api.all_devices.items()
+    }
+    OutputWriter(OutputFormat.YAML).write({"devices": data})
 
-    JSON = "json"
-    YAML = "yaml"
+def list_device_types(api):
+    """List all available device types in the pybattery package."""
+    data = {
+        name: device_type.__doc__.strip().splitlines()[0] if device_type.__doc__ else "No description available"
+        for name, device_type in api.device_types.items()
+    }
+    OutputWriter(OutputFormat.YAML).write({"device_types": data})
+
+def read(api: Api, device_names: List[str], format):
+    """Read data from specified devices."""
+    if not device_names:
+        return
+
+    if data := api.read(device_names):
+        OutputWriter(OutputFormat(format)).write(data)
+
+def write(api: Api, device_name: str, value: str):
+    """Write data to a specified device."""
+    write_devices = api.write_devices
+    if device_name not in write_devices:
+        print(f"Device '{device_name}' not found.", file=sys.stderr)
+        return
+    device = write_devices[device_name]
+    try:
+        device.write(value)
+    except Exception as e:
+        print(f"Failed to write to device '{device_name}': {e}", file=sys.stderr)
 
 
 def main(config: Optional[Config] = None):
     config = config or Config.from_file()
-    device_types = _list_device_types()
-    read_devices, write_devices = api.parse_devices(config=config, device_types=device_types)
+    api = Api(config=config)
+    read_devices, write_devices = api.read_devices, api.write_devices
 
     parser = argparse.ArgumentParser(description="Battery management system")
     subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
@@ -37,8 +66,8 @@ def main(config: Optional[Config] = None):
         "--format",
         type=str,
         help="Output format",
-        choices=[f.value for f in ReadFormat],
-        default=ReadFormat.YAML.value,
+        choices=[f.value for f in OutputFormat],
+        default=OutputFormat.YAML.value,
     )
 
     write_parser = subparsers.add_parser("write", help="Write device data")
@@ -53,21 +82,13 @@ def main(config: Optional[Config] = None):
 
     args = parser.parse_args().__dict__
     command = args.pop("command")
-    computed_args = {
-        "config": config,
-        "device_types": device_types,
-        "read_devices": read_devices,
-        "write_devices": write_devices,
-        **args,
-    }
-    # selected_device = args.pop("device") if "device" in args else None
     {
-        "read": api.read,
-        "write": api.write,
-        "list": api.list_devices,
-        "list-types": api.list_device_types,
+        "read": read,
+        "write": write,
+        "list": list_devices,
+        "list-types": list_device_types,
         "list-gpio": api.list_gpio,
-    }.get(command, lambda: parser.print_help())(**computed_args)
+    }.get(command, lambda: parser.print_help())(api, **args)
 
 
 if __name__ == "__main__":
