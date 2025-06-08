@@ -1,6 +1,6 @@
 import os
 from dataclasses import dataclass, field
-from typing import Any, Dict, Union
+from typing import Any, Dict, Optional, Union
 
 import yaml
 
@@ -9,7 +9,7 @@ from pybattery.models.utils import from_dict
 
 @dataclass
 class DeviceConfig:
-    def __init__(self, description: str, type: str, args: Dict[str, Any]):
+    def __init__(self, description: str, type: str, args: Optional[Dict[str, Any]] = None):
         self.description = description
         self.type = type
         self.args = args or {}

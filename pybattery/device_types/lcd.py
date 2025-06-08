@@ -31,7 +31,6 @@ class LcdDevice(Device):
 
         self._lcd: Optional[CharLCD] = None
 
-
     @property
     def lcd(self) -> CharLCD:
         """Return the LCD object."""
@@ -54,11 +53,17 @@ class LcdDevice(Device):
             self._lcd.clear()
         return self._lcd
 
-    def write(self, value: str) -> None:
-        """Write a value to the LCD display."""
+    def write(self, value: str, *other_lines) -> None:
+        """
+        Write a value to the LCD display. `value` can container carriage returns \r\n to
+        print on multiple lines. Alternatively, `other_lines` can be used to add additional lines
+        to the display.
+
+        e.g. write("Line 1\r\nLine 2") == write("Line 1", "Line 2")
+        """
         # Placeholder for actual implementation
-        lines = value.split("\n", LCD_ROWS - 1)
         self.lcd.clear()
+        lines = value.split("\n") + list(other_lines)
         self.lcd.write_string("\r\n".join(lines[:LCD_ROWS]))
 
 
