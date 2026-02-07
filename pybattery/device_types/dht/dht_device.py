@@ -1,10 +1,12 @@
 from typing import Any, Dict
+import pygpio
 
 from pybattery.models.config import DeviceConfig
 from pybattery.models.device import Device
-from Adafruit_DHT import read as read_sensor, DHT11
+from pybattery.device_types.dht.dht_pigpio import DhtSensor
 
 DEFAULT_GPIO = 13
+
 
 class Dht11Device(Device):
     """
@@ -15,6 +17,7 @@ class Dht11Device(Device):
 
     def __init__(self, config: DeviceConfig) -> None:
         super().__init__(config)
+        self._pi = pygpio.pi()
         self.gpio = config.args.get("gpio", DEFAULT_GPIO)
 
     def read(self) -> Dict[str, Any]:
