@@ -1,6 +1,6 @@
 import pytest
-import mock
-from mock import MagicMock
+from unittest import mock
+from unittest.mock import MagicMock
 from pybattery.device_types.lcd import LcdDevice
 from pybattery.protocols import WritableDeviceType
 from pybattery.models.config import DeviceConfig
