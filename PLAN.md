@@ -16,3 +16,5 @@
 # LOG
 
 - Started: 02/08 8:25
+  - Ended: 9:10
+  - Total: 0:45
