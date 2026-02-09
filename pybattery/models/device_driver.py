@@ -1,7 +1,7 @@
 from pybattery.models.config import DeviceConfig
 
 
-class Device:
+class DeviceDriver:
     def __init__(self, config: DeviceConfig):
         self._config = config
 

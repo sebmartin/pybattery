@@ -11,10 +11,20 @@ dependencies = [
     "rplcd>=1.4.0",
     "rpi-gpio>=0.7.1",
     "pygpio>=1.0.3",
+    "ruff>=0.15.0",
 ]
 
 [dependency-groups]
 dev = [
     "ipython>=9.10.0",
+    "pybattery",
     "pytest>=9.0.2",
 ]
+
+[tool.uv.workspace]
+members = [
+    ".",
+]
+
+[tool.uv.sources]
+pybattery = { workspace = true }

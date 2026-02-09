@@ -9,13 +9,13 @@ from pybattery.models.utils import from_dict
 
 @dataclass
 class DeviceConfig:
-    def __init__(self, description: str, type: str, args: Optional[Dict[str, Any]] = None):
+    def __init__(self, description: str, driver: str, args: Optional[Dict[str, Any]] = None):
         self.description = description
-        self.type = type
+        self.driver = driver
         self.args = args or {}
 
     description: str
-    type: str
+    driver: str
     args: Dict[str, Any] = field(default_factory=dict)
 
 

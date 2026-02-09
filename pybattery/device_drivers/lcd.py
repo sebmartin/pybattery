@@ -1,15 +1,17 @@
 from typing import Optional
 from pybattery.models.config import DeviceConfig
-from pybattery.models.device import Device
+from pybattery.models.device_driver import DeviceDriver
 
 from RPLCD.gpio import CharLCD
-from RPi import GPIO
+# from RPi import GPIO
 
 LCD_COLUMNS = 16
 LCD_ROWS = 2
 
-class LcdDevice(Device):
+
+class LcdDevice(DeviceDriver):
     """Control a 16x2 LCD display."""
+
     rs: int
     en: int
     d4: int
@@ -67,6 +69,6 @@ class LcdDevice(Device):
         self.lcd.write_string("\r\n".join(lines[:LCD_ROWS]))
 
 
-Device = LcdDevice
+DeviceDriver = LcdDevice
 
-__all__ = ["Device", "LcdDevice"]
+__all__ = ["DeviceDriver", "LcdDevice"]

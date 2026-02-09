@@ -7,21 +7,20 @@ from pybattery.models.config import Config
 from pybattery.output_writer import OutputFormat, OutputWriter
 
 
-def list_devices(api):
+def list_devices(api: Api):
     """List all available devices in the pybattery package."""
-    data = {
-        name: device.description
-        for name, device in api.all_devices.items()
-    }
+    data = {name: device.description for name, device in api.all_devices.items()}
     OutputWriter(OutputFormat.YAML).write({"devices": data})
 
-def list_device_types(api):
-    """List all available device types in the pybattery package."""
+
+def list_device_drivers(api: Api):
+    """List all available device drivers in the pybattery package."""
     data = {
-        name: device_type.__doc__.strip().splitlines()[0] if device_type.__doc__ else "No description available"
-        for name, device_type in api.device_types.items()
+        name: device_driver.__doc__.strip().splitlines()[0] if device_driver.__doc__ else "No description available"
+        for name, device_driver in api.device_drivers.items()
     }
-    OutputWriter(OutputFormat.YAML).write({"device_types": data})
+    OutputWriter(OutputFormat.YAML).write({"device_drivers": data})
+
 
 def read(api: Api, device_names: List[str], format):
     """Read data from specified devices."""
@@ -30,6 +29,7 @@ def read(api: Api, device_names: List[str], format):
 
     if data := api.read(device_names):
         OutputWriter(OutputFormat(format)).write(data)
+
 
 def write(api: Api, device_name: str, value: str):
     """Write data to a specified device."""
@@ -77,18 +77,22 @@ def main(config: Optional[Config] = None):
     write_parser.add_argument("value", type=str, help="Value to write")
 
     subparsers.add_parser("list", help="List available devices")
-    subparsers.add_parser("list-types", help="List available device types")
+    subparsers.add_parser("list-drivers", help="List available device drivers")
     subparsers.add_parser("list-gpio", help="List available GPIO pins on the board")
 
     args = parser.parse_args().__dict__
+
+    def default_action(*args, **kwargs) -> None:
+        parser.print_help()
+
     command = args.pop("command")
     {
         "read": read,
         "write": write,
         "list": list_devices,
-        "list-types": list_device_types,
+        "list-drivers": list_device_drivers,
         "list-gpio": api.list_gpio,
-    }.get(command, lambda: parser.print_help())(api, **args)
+    }.get(command, default_action)(api, **args)
 
 
 if __name__ == "__main__":

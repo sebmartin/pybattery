@@ -1,10 +1,10 @@
 from typing import Any, Dict
 
 from pybattery.models.config import DeviceConfig
-from pybattery.models.device import Device
+from pybattery.models.device_driver import DeviceDriver
 
 
-class Ds12b20Device(Device):
+class Ds12b20Device(DeviceDriver):
     """
     Read temperature data from a DS12B20 thermometer sensor.
     """
@@ -19,6 +19,6 @@ class Ds12b20Device(Device):
         return {}
 
 
-Device = Ds12b20Device
+DeviceDriver = Ds12b20Device
 
-__all__ = ["Device", "Ds12b20Device"]
+__all__ = ["DeviceDriver", "Ds12b20Device"]

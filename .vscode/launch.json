@@ -8,7 +8,7 @@
             "name": "main with Arguments",
             "type": "debugpy",
             "request": "launch",
-            "program": "pybattery/main.py",
+            "module": "pybattery.main",
             "console": "integratedTerminal",
             "args": "${command:pickArgs}"
         }
