@@ -7,23 +7,25 @@ from pybattery.models.config import Config
 from pybattery.output_writer import OutputFormat, OutputWriter
 
 
-def list_devices(api):
-    """List all available devices in the pybattery package."""
+def list_devices(api: Api, **kwargs):
+    """List all available devices."""
     data = {
         name: device.description
         for name, device in api.all_devices.items()
     }
     OutputWriter(OutputFormat.YAML).write({"devices": data})
 
-def list_device_types(api):
-    """List all available device types in the pybattery package."""
-    data = {
-        name: device_type.__doc__.strip().splitlines()[0] if device_type.__doc__ else "No description available"
-        for name, device_type in api.device_types.items()
-    }
-    OutputWriter(OutputFormat.YAML).write({"device_types": data})
 
-def read(api: Api, device_names: List[str], format):
+def list_drivers(api: Api, **kwargs):
+    """List all available device drivers."""
+    data = {
+        name: driver.__doc__.strip().splitlines()[0] if driver.__doc__ else "No description available"
+        for name, driver in api.device_drivers.items()
+    }
+    OutputWriter(OutputFormat.YAML).write({"device_drivers": data})
+
+
+def read(api: Api, device_names: List[str], format: str, **kwargs):
     """Read data from specified devices."""
     if not device_names:
         return
@@ -31,21 +33,23 @@ def read(api: Api, device_names: List[str], format):
     if data := api.read(device_names):
         OutputWriter(OutputFormat(format)).write(data)
 
-def write(api: Api, device_name: str, value: str):
+
+def write(api: Api, device_name: str, value: str, **kwargs):
     """Write data to a specified device."""
-    write_devices = api.write_devices
-    if device_name not in write_devices:
-        print(f"Device '{device_name}' not found.", file=sys.stderr)
-        return
-    device = write_devices[device_name]
-    try:
-        device.write(value)
-    except Exception as e:
-        print(f"Failed to write to device '{device_name}': {e}", file=sys.stderr)
+    device = api.write_devices.get(device_name)
+    if device is None:
+        print(f"Error: '{device_name}' is not a writable device", file=sys.stderr)
+        sys.exit(1)
+    api.write(device, value)
 
 
 def main(config: Optional[Config] = None):
-    config = config or Config.from_file()
+    try:
+        config = config or Config.from_file()
+    except (FileNotFoundError, Exception) as e:
+        print(f"Error loading config: {e}", file=sys.stderr)
+        sys.exit(1)
+
     api = Api(config=config)
     read_devices, write_devices = api.read_devices, api.write_devices
 
@@ -72,23 +76,25 @@ def main(config: Optional[Config] = None):
 
     write_parser = subparsers.add_parser("write", help="Write device data")
     write_parser.add_argument(
-        "device_name", metavar="device", type=str, help="Name of device to write to", choices=list(write_devices.keys())
+        "device_name",
+        metavar="device",
+        type=str,
+        help="Name of device to write to",
+        choices=list(write_devices.keys()),
     )
     write_parser.add_argument("value", type=str, help="Value to write")
 
-    subparsers.add_parser("list", help="List available devices")
-    subparsers.add_parser("list-types", help="List available device types")
-    subparsers.add_parser("list-gpio", help="List available GPIO pins on the board")
+    subparsers.add_parser("devices", help="List available devices")
+    subparsers.add_parser("drivers", help="List available device drivers")
 
     args = parser.parse_args().__dict__
     command = args.pop("command")
     {
         "read": read,
         "write": write,
-        "list": list_devices,
-        "list-types": list_device_types,
-        "list-gpio": api.list_gpio,
-    }.get(command, lambda: parser.print_help())(api, **args)
+        "devices": list_devices,
+        "drivers": list_drivers,
+    }.get(command, lambda **_: parser.print_help())(api, **args)
 
 
 if __name__ == "__main__":

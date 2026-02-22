@@ -4,7 +4,7 @@ from pybattery.models.config import DeviceConfig
 
 
 @runtime_checkable
-class ReadableDeviceType(Protocol):
+class ReadableDriver(Protocol):
     def __init__(self, config: DeviceConfig):
         pass
 
@@ -19,7 +19,7 @@ class ReadableDeviceType(Protocol):
 
 
 @runtime_checkable
-class WritableDeviceType(Protocol):
+class WritableDriver(Protocol):
     def __init__(self, config: DeviceConfig):
         pass
 

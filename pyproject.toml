@@ -1,3 +1,31 @@
+[project]
+name = "pybattery"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pyyaml",
+    "pydantic",
+    "dbus-python",
+    "minimalmodbus",
+    "pyserial",
+    "pyrover @ git+https://github.com/sebmartin/pyrover.git",
+    "pigpio",
+]
+
+[dependency-groups]
+dev = ["pytest", "ruff", "pytest-cov"]
+rpi = ["RPLCD", "RPi.GPIO"]
+
+[project.scripts]
+pybattery = "pybattery.main:main"
+
 [build-system]
 requires = ["setuptools>=42"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pybattery*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
