@@ -2,7 +2,7 @@ import pytest
 from unittest import mock
 from unittest.mock import MagicMock
 from pybattery.device_drivers.lcd import LcdDevice
-from pybattery.models.protocols import WritableDeviceType
+from pybattery.models.protocols import WritableDeviceDriver
 from pybattery.models.config import DeviceConfig
 
 
@@ -20,7 +20,9 @@ def mock_gpio():
 
 @pytest.fixture(autouse=True)
 def mock_lcd_factory(mock_lcd_api):
-    with mock.patch("pybattery.device_drivers.lcd.CharLCD", return_value=mock_lcd_api) as lcd_factory:
+    with mock.patch(
+        "pybattery.device_drivers.lcd.CharLCD", return_value=mock_lcd_api
+    ) as lcd_factory:
         yield lcd_factory
 
 
@@ -36,7 +38,9 @@ def config():
 
 def test_lcd_is_readable_device_driver(config: DeviceConfig):
     lcd = LcdDevice(config)
-    assert isinstance(lcd, WritableDeviceType), "LcdDevice should be a WritableDeviceType"
+    assert isinstance(
+        lcd, WritableDeviceDriver
+    ), "LcdDevice should be a WritableDeviceType"
 
 
 def test_lcd_initialize(config: DeviceConfig, mock_lcd_factory, mock_gpio):

@@ -1,15 +1,13 @@
-from typing import Optional
 from pybattery.models.config import DeviceConfig
 from pybattery.models.device_driver import DeviceDriver
 
-from RPLCD.gpio import CharLCD
-# from RPi import GPIO
+from pybattery.device_drivers.lcd.lcd import LcdProtocol, NumberingMode, create_lcd
 
 LCD_COLUMNS = 16
 LCD_ROWS = 2
 
 
-class LcdDevice(DeviceDriver):
+class LcdDriver(DeviceDriver):
     """Control a 16x2 LCD display."""
 
     rs: int
@@ -31,15 +29,15 @@ class LcdDevice(DeviceDriver):
         self.d6 = gpio.get("d6", 5)
         self.d7 = gpio.get("d7", 11)
 
-        self._lcd: Optional[CharLCD] = None
+        self._lcd: LcdProtocol | None = None
 
     @property
-    def lcd(self) -> CharLCD:
+    def lcd(self) -> LcdProtocol:
         """Return the LCD object."""
 
         if not self._lcd:
-            self._lcd = CharLCD(
-                numbering_mode=GPIO.BCM,
+            self._lcd = create_lcd(
+                numbering_mode=NumberingMode.BCM,
                 cols=LCD_COLUMNS,
                 rows=LCD_ROWS,
                 pin_rs=self.rs,
@@ -67,8 +65,3 @@ class LcdDevice(DeviceDriver):
         self.lcd.clear()
         lines = value.split("\n") + list(other_lines)
         self.lcd.write_string("\r\n".join(lines[:LCD_ROWS]))
-
-
-DeviceDriver = LcdDevice
-
-__all__ = ["DeviceDriver", "LcdDevice"]

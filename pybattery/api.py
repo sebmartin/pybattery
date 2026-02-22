@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 
 from pybattery.device_drivers import list_device_drivers
 from pybattery.models.config import Config
-from pybattery.models.protocols import ReadableDeviceType, WritableDeviceType
+from pybattery.models.protocols import ReadableDeviceDriver, WritableDeviceDriver
 
 
 class ReadFormat(Enum):
@@ -27,17 +27,19 @@ class Api:
         return self._config
 
     @property
-    def read_devices(self) -> Dict[str, ReadableDeviceType]:
+    def read_devices(self) -> Dict[str, ReadableDeviceDriver]:
         """Get the readable devices."""
         return self._read_devices
 
     @property
-    def write_devices(self) -> Dict[str, WritableDeviceType]:
+    def write_devices(self) -> Dict[str, WritableDeviceDriver]:
         """Get the writable devices."""
         return self._write_devices
 
     @property
-    def all_devices(self) -> Dict[str, Union[ReadableDeviceType, WritableDeviceType]]:
+    def all_devices(
+        self,
+    ) -> Dict[str, Union[ReadableDeviceDriver, WritableDeviceDriver]]:
         """Get all devices."""
         return {**self._read_devices, **self._write_devices}
 
@@ -59,55 +61,52 @@ class Api:
             return None
 
         output = {
-            device_name: device.read() for device_name in device_names if (device := self.read_devices.get(device_name))
+            device_name: device.read()
+            for device_name in device_names
+            if (device := self.read_devices.get(device_name))
         }
         if len(device_names) == 1:
             output = output.get(device_names[0])
         return output
 
-    def write(self, device: WritableDeviceType, value: str, **kwargs):
+    def write(self, device_name: str, value: str):
         """Write component data."""
-        print(f"Writing {value} to {device}")
+        write_devices = self.write_devices
+        if device_name not in write_devices:
+            print(f"Device '{device_name}' not found.", file=sys.stderr)
+            return
+        device = write_devices[device_name]
+        device.write(value)
 
-    def list_gpio(self, **kwargs):
-        """List all available GPIO pins on the board."""
-        try:
-            # import board
-
-            def parse_gpio(gpio: Union[str, List[str]]):
-                return gpio if isinstance(gpio, list) else [gpio]
-
-            configured_gpios = {
-                gpio: device
-                for device, device_config in self.config.devices.items()
-                for gpio in parse_gpio(device_config.args.get("gpio", []))
-            }
-
-            # print("Board identified as:", str(board.board_id))
-
-            gpio_pins = [pin for pin in dir(board) if not pin.startswith("_")]
-            print("Available GPIO pins:")
-            for pin in sorted(gpio_pins):
-                if configured_gpio := configured_gpios.get(pin):
-                    print(f"- {pin} (used by {configured_gpio})")
-                else:
-                    print(f"- {pin}")
-        except (ImportError, NotImplementedError):
-            print("Board module not available. GPIO pins cannot be listed.")
-
-    def _parse_devices(self) -> Tuple[Dict[str, ReadableDeviceType], Dict[str, WritableDeviceType]]:
+    def _parse_devices(
+        self,
+    ) -> Tuple[Dict[str, ReadableDeviceDriver], Dict[str, WritableDeviceDriver]]:
         """Parse devices from the configuration."""
         all_devices = {
             name: device_driver(device_config)
             for name, device_config in self._config.devices.items()
             if (device_driver := self.device_drivers.get(device_config.driver))
-            and isinstance(device_driver, (ReadableDeviceType, WritableDeviceType))
+            and isinstance(device_driver, (ReadableDeviceDriver, WritableDeviceDriver))
         }
         if unknown_devices := set(self.config.devices.keys()) - set(all_devices.keys()):
-            print(f"Unknown devices found in config: {', '.join(unknown_devices)}", file=sys.stderr)
-            print("These devices were not recognized as either a readable or writable device.", file=sys.stderr)
+            print(
+                f"Unknown devices found in config: {', '.join(unknown_devices)}",
+                file=sys.stderr,
+            )
+            print(
+                "These devices were not recognized as either a readable or writable device.",
+                file=sys.stderr,
+            )
 
-        read_devices = {name: device for name, device in all_devices.items() if isinstance(device, ReadableDeviceType)}
-        write_devices = {name: device for name, device in all_devices.items() if isinstance(device, WritableDeviceType)}
+        read_devices = {
+            name: device
+            for name, device in all_devices.items()
+            if isinstance(device, ReadableDeviceDriver)
+        }
+        write_devices = {
+            name: device
+            for name, device in all_devices.items()
+            if isinstance(device, WritableDeviceDriver)
+        }
 
         return read_devices, write_devices

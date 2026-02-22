@@ -2,6 +2,7 @@ import sys
 from textwrap import dedent
 from typing import Any, Dict, List, Optional
 from unittest import mock
+
 from pybattery.output_writer import OutputFormat
 
 import pytest
@@ -81,7 +82,7 @@ def test_help(capsys):
 
 
 def test_list(fake_config, capsys):
-    test_args = ["main.py", "list"]
+    test_args = ["main.py", "devices"]
     with mock.patch.object(sys, "argv", test_args):
         main(fake_config)
 
@@ -96,7 +97,7 @@ def test_list(fake_config, capsys):
 
 
 def test_list_device_drivers(fake_config, capsys):
-    test_args = ["main.py", "list-drivers"]
+    test_args = ["main.py", "drivers"]
     with mock.patch.object(sys, "argv", test_args):
         main(fake_config)
 
@@ -131,6 +132,8 @@ def test_read__one_device(format, fake_config, capsys):
         data = json.loads(captured.out)
     elif format == OutputFormat.YAML:
         data = yaml.load(captured.out, Loader=Loader)
+    else:
+        raise AssertionError(f"Unknown format: {format}")
 
     assert data == {"data": "this is read-only data from the config"}
 
@@ -149,6 +152,15 @@ def test_read__invalid_device(fake_config, capsys):
         """
     )
     assert output.strip() == captured.err.strip()
+
+
+def test_write__one_device(fake_config, capsys):
+    test_args = ["main.py", "write", "test-writer", "foo"]
+    with mock.patch.object(sys, "argv", test_args):
+        main(fake_config)
+
+    output = capsys.readouterr().out
+    assert "Writing foo to WriteDevice\n" in output
 
 
 def test_write__invalid_driver(fake_config, capsys):

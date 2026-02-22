@@ -2,6 +2,8 @@ import argparse
 import sys
 from typing import List, Optional
 
+from pydantic import ValidationError
+
 from pybattery.api import Api
 from pybattery.models.config import Config
 from pybattery.output_writer import OutputFormat, OutputWriter
@@ -16,7 +18,11 @@ def list_devices(api: Api):
 def list_device_drivers(api: Api):
     """List all available device drivers in the pybattery package."""
     data = {
-        name: device_driver.__doc__.strip().splitlines()[0] if device_driver.__doc__ else "No description available"
+        name: (
+            device_driver.__doc__.strip().splitlines()[0]
+            if device_driver.__doc__
+            else "No description available"
+        )
         for name, device_driver in api.device_drivers.items()
     }
     OutputWriter(OutputFormat.YAML).write({"device_drivers": data})
@@ -33,21 +39,20 @@ def read(api: Api, device_names: List[str], format):
 
 def write(api: Api, device_name: str, value: str):
     """Write data to a specified device."""
-    write_devices = api.write_devices
-    if device_name not in write_devices:
-        print(f"Device '{device_name}' not found.", file=sys.stderr)
-        return
-    device = write_devices[device_name]
     try:
-        device.write(value)
+        api.write(device_name=device_name, value=value)
     except Exception as e:
         print(f"Failed to write to device '{device_name}': {e}", file=sys.stderr)
 
 
 def main(config: Optional[Config] = None):
-    config = config or Config.from_file()
-    api = Api(config=config)
-    read_devices, write_devices = api.read_devices, api.write_devices
+    try:
+        config = config or Config.from_file()
+        api = Api(config=config)
+        read_devices, write_devices = api.read_devices, api.write_devices
+    except (ValidationError, ValueError) as e:
+        print(e)
+        exit(1)
 
     parser = argparse.ArgumentParser(description="Battery management system")
     subparsers = parser.add_subparsers(dest="command", help="Sub-commands")
@@ -72,13 +77,16 @@ def main(config: Optional[Config] = None):
 
     write_parser = subparsers.add_parser("write", help="Write device data")
     write_parser.add_argument(
-        "device_name", metavar="device", type=str, help="Name of device to write to", choices=list(write_devices.keys())
+        "device_name",
+        metavar="device",
+        type=str,
+        help="Name of device to write to",
+        choices=list(write_devices.keys()),
     )
     write_parser.add_argument("value", type=str, help="Value to write")
 
-    subparsers.add_parser("list", help="List available devices")
-    subparsers.add_parser("list-drivers", help="List available device drivers")
-    subparsers.add_parser("list-gpio", help="List available GPIO pins on the board")
+    subparsers.add_parser("devices", help="List available devices")
+    subparsers.add_parser("drivers", help="List available device drivers")
 
     args = parser.parse_args().__dict__
 
@@ -89,9 +97,8 @@ def main(config: Optional[Config] = None):
     {
         "read": read,
         "write": write,
-        "list": list_devices,
-        "list-drivers": list_device_drivers,
-        "list-gpio": api.list_gpio,
+        "devices": list_devices,
+        "drivers": list_device_drivers,
     }.get(command, default_action)(api, **args)
 
 

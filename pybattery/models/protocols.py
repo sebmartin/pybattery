@@ -1,10 +1,10 @@
-from typing import Any, Dict, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from pybattery.models.config import DeviceConfig
 
 
 @runtime_checkable
-class ReadableDeviceType(Protocol):
+class ReadableDeviceDriver(Protocol):
     def __init__(self, config: DeviceConfig):
         pass
 
@@ -13,13 +13,13 @@ class ReadableDeviceType(Protocol):
         """Get the device description."""
         ...
 
-    def read(self) -> Optional[Dict[str, Any]]:
+    def read(self) -> dict[str, Any] | None:
         """Read the component's value."""
         ...
 
 
 @runtime_checkable
-class WritableDeviceType(Protocol):
+class WritableDeviceDriver(Protocol):
     def __init__(self, config: DeviceConfig):
         pass
 
