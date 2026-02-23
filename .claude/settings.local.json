@@ -2,7 +2,11 @@
   "permissions": {
     "allow": [
       "Bash(tree:*)",
-      "Bash(ALLOW_FAKE_DEVICES=1 python:*)"
+      "Bash(ALLOW_FAKE_DEVICES=1 python:*)",
+      "Bash(tail:*)",
+      "Bash(python:*)",
+      "Bash(git ls-tree:*)",
+      "Bash(git stash && python -m pytest tests/device_drivers/dht/test_dht.py --cov=pybattery.device_drivers.dht --cov-report=term-missing 2>&1)"
     ]
   }
 }
