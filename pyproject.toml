@@ -5,7 +5,6 @@ requires-python = ">=3.12"
 dependencies = [
     "pyyaml",
     "pydantic",
-    "dbus-python",
     "minimalmodbus",
     "pyserial",
     "pyrover @ git+https://github.com/sebmartin/pyrover.git",
