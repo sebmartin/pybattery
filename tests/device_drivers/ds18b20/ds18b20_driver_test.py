@@ -6,6 +6,7 @@ import pytest
 from pybattery.device_drivers.ds18b20 import Ds18b20Driver
 from pybattery.device_drivers.ds18b20.ds18b20_driver import Ds18b20Config
 from pybattery.models.config import DeviceConfig
+from pybattery.models.protocols import ReadableDeviceDriver
 
 
 @pytest.fixture
@@ -55,14 +56,17 @@ def good_data():
 
 @pytest.fixture(autouse=True)
 def mock_available_device_ids():
-    with mock.patch(
-        "pybattery.device_drivers.ds18b20.ds18b20_driver.get_sensors"
-    ) as mock_get_sensors:
+    with mock.patch("pybattery.device_drivers.ds18b20.ds18b20_driver.get_sensors") as mock_get_sensors:
         mock_get_sensors.return_value = [Path("/sys/bus/w1/devices/28-0a9cd44619ac")]
         yield mock_get_sensors
 
 
-@pytest.mark.parametre
+def test_is_readable(config, mock_data, good_data):
+    mock.mock_open(mock_data, read_data=good_data)
+    sensor = Ds18b20Driver(config)
+    assert isinstance(sensor, ReadableDeviceDriver)
+
+
 def test_read(config, mock_data, good_data):
     mock.mock_open(mock_data, read_data=good_data)
     sensor = Ds18b20Driver(config)
@@ -71,7 +75,6 @@ def test_read(config, mock_data, good_data):
     }
 
 
-@pytest.mark.parametre
 def test_read__crc_failure(config, mock_data, bad_data):
     mock.mock_open(mock_data, read_data=bad_data)
     sensor = Ds18b20Driver(config)
