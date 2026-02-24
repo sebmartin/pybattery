@@ -8,7 +8,7 @@ devices:
   thermo-exterior:
     description: Exterior temperature sensor
     driver: ds18b20
-    sensor_id: 28-00000
+    sensor_id: 28-0a9cd44619ac
 
   thermo-interior:
     description: Interior temperature and humidity sensor

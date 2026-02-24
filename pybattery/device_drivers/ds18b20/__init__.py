@@ -47,15 +47,9 @@ class Ds18b20Device(Device):
         self._validate_sensor()
 
     def _validate_sensor(self) -> None:
+        """Validate config only. Sensor presence is checked on first read()."""
         if not self.sensor_id:
             raise RuntimeError("DS18B20 sensor_id is required in config")
-        try:
-            self._reader.read(self.sensor_id)
-        except FileNotFoundError:
-            raise RuntimeError(
-                f"DS18B20 sensor '{self.sensor_id}' not found. "
-                f"Check that the sensor is connected and one-wire is enabled."
-            )
 
     def read(self) -> Dict[str, Any]:
         """Read the temperature from the DS18B20 sensor."""

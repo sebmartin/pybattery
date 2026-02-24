@@ -22,14 +22,16 @@ def test_ds18b20_read_temperature(config, reader):
     assert result == {"temperature": 23.456}
 
 
-def test_ds18b20_missing_sensor_at_init_raises():
-    """Constructor raises RuntimeError when sensor is not found."""
+def test_ds18b20_missing_sensor_returns_error_on_read():
+    """When sensor is not found, read() returns error payload; init does not raise."""
     config = DeviceConfig(
         description="Test DS18B20", driver="ds18b20", args={"sensor_id": "28-nonexistent"}
     )
     reader = FakeSysfsReader(sensors={})
-    with pytest.raises(RuntimeError, match="28-nonexistent"):
-        Ds18b20Device(config, reader=reader)
+    device = Ds18b20Device(config, reader=reader)
+    result = device.read()
+    assert result["status"] == "error"
+    assert result["temperature"] is None
 
 
 def test_ds18b20_missing_sensor_id_raises():
