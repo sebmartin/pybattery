@@ -1,7 +1,7 @@
 import pytest
 
 from pybattery.device_drivers.dht import (
-    DhtDevice, PigpioHardware,
+    DhtDevice, LgpioHardware,
     _decode_dht11, _decode_dhtxx, _edges_to_bits,
 )
 from pybattery.device_drivers.dht.fakes import FakePi
@@ -44,11 +44,11 @@ def dhtxx_config():
     )
 
 
-# --- DhtDevice integration tests (FakePi -> PigpioHardware -> decode) ---
+# --- DhtDevice integration tests (FakePi -> LgpioHardware -> decode) ---
 
 def test_dht_read_returns_status(config):
     """DhtDevice.read() always returns a dict with required keys."""
-    hw = PigpioHardware(pi=FakePi())
+    hw = LgpioHardware(chip=FakePi())
     device = DhtDevice(config, hardware=hw)
     result = device.read()
     assert "status" in result
@@ -58,9 +58,9 @@ def test_dht_read_returns_status(config):
 
 
 def test_dht11_read_through_hardware(config):
-    """Full path: FakePi -> PigpioHardware.trigger/read_bits -> decode -> result."""
+    """Full path: FakePi -> LgpioHardware.trigger/read_bits -> decode -> result."""
     fake_pi = FakePi(temperature=25.3, humidity=45.0, model="DHT11")
-    hw = PigpioHardware(pi=fake_pi)
+    hw = LgpioHardware(chip=fake_pi)
     device = DhtDevice(config, hardware=hw)
     result = device.read()
     assert result["status"] == "ok"
@@ -71,7 +71,7 @@ def test_dht11_read_through_hardware(config):
 def test_dhtxx_read_through_hardware(dhtxx_config):
     """Full path for DHTXX model through real hardware layer."""
     fake_pi = FakePi(temperature=24.1, humidity=65.2, model="DHTXX")
-    hw = PigpioHardware(pi=fake_pi)
+    hw = LgpioHardware(chip=fake_pi)
     device = DhtDevice(dhtxx_config, hardware=hw)
     result = device.read()
     assert result["status"] == "ok"
@@ -82,7 +82,7 @@ def test_dhtxx_read_through_hardware(dhtxx_config):
 def test_dhtxx_negative_temperature(dhtxx_config):
     """DHTXX with negative temperature through full hardware path."""
     fake_pi = FakePi(temperature=-10.5, humidity=50.0, model="DHTXX")
-    hw = PigpioHardware(pi=fake_pi)
+    hw = LgpioHardware(chip=fake_pi)
     device = DhtDevice(dhtxx_config, hardware=hw)
     result = device.read()
     assert result["status"] == "ok"
@@ -93,7 +93,7 @@ def test_dhtxx_negative_temperature(dhtxx_config):
 def test_dht11_bad_checksum_returns_error(config):
     """Bad checksum through full hardware path returns error."""
     fake_pi = FakePi(temperature=25.0, humidity=45.0, model="DHT11", checksum=0xFF)
-    hw = PigpioHardware(pi=fake_pi)
+    hw = LgpioHardware(chip=fake_pi)
     device = DhtDevice(config, hardware=hw)
     result = device.read()
     assert result["status"] == "error"
@@ -103,7 +103,7 @@ def test_dht11_bad_checksum_returns_error(config):
 def test_dht_hardware_error_returns_error_dict(config):
     """When hardware raises, read() returns error dict without raising."""
     fake_pi = FakePi(error=RuntimeError("pigpio error"))
-    hw = PigpioHardware(pi=fake_pi)
+    hw = LgpioHardware(chip=fake_pi)
     device = DhtDevice(config, hardware=hw)
     result = device.read()
     assert result["status"] == "error"
@@ -113,7 +113,7 @@ def test_dht_hardware_error_returns_error_dict(config):
 def test_dht_triggers_correct_gpio(config):
     """DhtDevice.read() triggers the configured GPIO pin via write(gpio, 0)."""
     fake_pi = FakePi(temperature=20.0, humidity=50.0)
-    hw = PigpioHardware(pi=fake_pi)
+    hw = LgpioHardware(chip=fake_pi)
     device = DhtDevice(config, hardware=hw)
     device.read()
     assert 17 in fake_pi.triggered_gpios
@@ -122,7 +122,7 @@ def test_dht_triggers_correct_gpio(config):
 def test_dht_config_gpio_default():
     """DhtDevice uses default GPIO 13 when not specified."""
     config = DeviceConfig(description="Test DHT", driver="dht")
-    hw = PigpioHardware(pi=FakePi())
+    hw = LgpioHardware(chip=FakePi())
     device = DhtDevice(config, hardware=hw)
     assert device.gpio == 13
 
@@ -137,7 +137,7 @@ def test_dht_config_gpio_default():
 def test_dht11_various_values(config, temp, humidity):
     """DHT11 correctly reads various temperature/humidity values."""
     fake_pi = FakePi(temperature=temp, humidity=humidity, model="DHT11")
-    hw = PigpioHardware(pi=fake_pi)
+    hw = LgpioHardware(chip=fake_pi)
     device = DhtDevice(config, hardware=hw)
     result = device.read()
     assert result["status"] == "ok"
@@ -155,7 +155,7 @@ def test_dht11_various_values(config, temp, humidity):
 def test_dhtxx_various_values(dhtxx_config, temp, humidity):
     """DHTXX correctly reads various temperature/humidity values."""
     fake_pi = FakePi(temperature=temp, humidity=humidity, model="DHTXX")
-    hw = PigpioHardware(pi=fake_pi)
+    hw = LgpioHardware(chip=fake_pi)
     device = DhtDevice(dhtxx_config, hardware=hw)
     result = device.read()
     assert result["status"] == "ok"
@@ -202,7 +202,7 @@ def test_decode_dhtxx_insufficient_bits():
 def test_dht11_bad_data_returns_error(config, temp, humidity):
     """DHT11 readings outside physical range return error."""
     fake_pi = FakePi(temperature=temp, humidity=humidity, model="DHT11")
-    hw = PigpioHardware(pi=fake_pi)
+    hw = LgpioHardware(chip=fake_pi)
     device = DhtDevice(config, hardware=hw)
     result = device.read()
     assert result["status"] == "error"
@@ -217,7 +217,7 @@ def test_dht11_bad_data_returns_error(config, temp, humidity):
 def test_dhtxx_bad_data_returns_error(dhtxx_config, temp, humidity):
     """DHTXX readings outside physical range return error."""
     fake_pi = FakePi(temperature=temp, humidity=humidity, model="DHTXX")
-    hw = PigpioHardware(pi=fake_pi)
+    hw = LgpioHardware(chip=fake_pi)
     device = DhtDevice(dhtxx_config, hardware=hw)
     result = device.read()
     assert result["status"] == "error"

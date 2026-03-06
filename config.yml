@@ -13,7 +13,7 @@ devices:
   thermo-interior:
     description: Interior temperature and humidity sensor
     driver: dht
-    gpio: 17
+    gpio: 27
 
   display:
     description: 16x2 LCD display

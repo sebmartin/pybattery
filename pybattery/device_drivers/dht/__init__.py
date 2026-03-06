@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 from datetime import datetime
-from typing import Any, Callable, Dict, List, Literal, Optional, Protocol, runtime_checkable
+from typing import Any, Callable, Dict, List, Literal, Optional, Protocol
 
 from pybattery.models.config import DeviceConfig
 from pybattery.models.device import Device
@@ -21,20 +21,17 @@ class CancelableCallback(Protocol):
     def cancel(self) -> None: ...
 
 
-class PiProtocol(Protocol):
-    """Protocol matching the subset of pigpio.pi() we use."""
-    def set_mode(self, gpio: int, mode: int) -> None: ...
+class GpioChipProtocol(Protocol):
+    """Protocol matching the lgpio chip interface we use."""
+    def claim_output(self, gpio: int) -> None: ...
+    def claim_input(self, gpio: int) -> None: ...
     def write(self, gpio: int, level: int) -> None: ...
-    def callback(self, gpio: int, edge: int, func: Callable[[int, int, int], None]) -> CancelableCallback: ...
-
-
-EDGE_EITHER = 2  # pigpio.EITHER_EDGE
-MODE_INPUT = 0   # pigpio.INPUT
-MODE_OUTPUT = 1  # pigpio.OUTPUT
+    def free(self, gpio: int) -> None: ...
+    def callback(self, gpio: int, func: Callable[[int, int, int, int], None]) -> CancelableCallback: ...
 
 
 def _edges_to_bits(edges: List[tuple[int, int]]) -> List[int]:
-    """Convert a list of (level, tick) edge events into decoded DHT data bits.
+    """Convert a list of (level, tick_us) edge events into decoded DHT data bits.
 
     The DHT protocol sends a response pulse (~80µs low + ~80µs high) followed
     by 40 data bits. Each data bit starts with ~50µs low, then high for ~26µs
@@ -61,24 +58,49 @@ def _edges_to_bits(edges: List[tuple[int, int]]) -> List[int]:
     return bits
 
 
-class PigpioHardware:
-    """Hardware implementation using a pigpio pi instance.
+class LgpioChip:
+    """Wraps a real lgpio chip handle to implement GpioChipProtocol."""
 
-    Accepts a pi (real or fake) for dependency injection, making the
-    trigger/read_bits logic testable without real hardware.
+    def __init__(self, handle: int):
+        self._h = handle
+
+    def claim_output(self, gpio: int) -> None:
+        import lgpio
+        lgpio.gpio_claim_output(self._h, gpio)
+
+    def claim_input(self, gpio: int) -> None:
+        import lgpio
+        lgpio.gpio_claim_input(self._h, gpio)
+
+    def write(self, gpio: int, level: int) -> None:
+        import lgpio
+        lgpio.gpio_write(self._h, gpio, level)
+
+    def free(self, gpio: int) -> None:
+        import lgpio
+        lgpio.gpio_free(self._h, gpio)
+
+    def callback(self, gpio: int, func: Callable[[int, int, int, int], None]) -> CancelableCallback:
+        import lgpio
+        return lgpio.callback(self._h, gpio, lgpio.BOTH_EDGES, func)
+
+
+class LgpioHardware:
+    """Hardware implementation using lgpio (no daemon required).
+
+    Accepts a chip (real or fake) for dependency injection, making the
+    read logic testable without real hardware.
     """
 
-    def __init__(self, pi: Optional[PiProtocol] = None):
-        if pi is not None:
-            self._pi = pi
+    def __init__(self, chip: Optional[GpioChipProtocol] = None):
+        if chip is not None:
+            self._chip = chip
         else:
             try:
-                import pigpio
-                self._pi = pigpio.pi()
-                if not self._pi.connected:
-                    raise RuntimeError("pigpio daemon is not running")
-            except ImportError as e:
-                raise RuntimeError("pigpio is not installed") from e
+                import lgpio
+                self._chip = LgpioChip(lgpio.gpiochip_open(0))
+            except Exception as e:
+                raise RuntimeError("Cannot open GPIO chip") from e
 
     def read(self, gpio: int) -> List[int]:
         """Trigger the DHT sensor and read 40 decoded bits.
@@ -92,22 +114,22 @@ class PigpioHardware:
         edges: List[tuple[int, int]] = []
         done = threading.Event()
 
-        def _cb(_gpio_pin: int, level: int, tick: int) -> None:
-            edges.append((level, tick))
+        def _cb(_chip: int, _gpio: int, level: int, tick_ns: int) -> None:
+            edges.append((level, tick_ns // 1000))  # ns -> µs
             # Response pulse (2 edges) + 40 data bits (2 edges each) = 82 edges
             if len(edges) >= 82:
                 done.set()
 
-        cb = self._pi.callback(gpio, EDGE_EITHER, _cb)
+        cb = self._chip.callback(gpio, _cb)
         try:
-            # Trigger: pull line low for ~20ms, then release to input
-            self._pi.set_mode(gpio, MODE_OUTPUT)
-            self._pi.write(gpio, 0)
+            self._chip.claim_output(gpio)
+            self._chip.write(gpio, 0)
             time.sleep(0.02)
-            self._pi.set_mode(gpio, MODE_INPUT)
+            self._chip.claim_input(gpio)
             done.wait(timeout=0.1)
         finally:
             cb.cancel()
+            self._chip.free(gpio)
         return _edges_to_bits(edges)
 
 
@@ -182,19 +204,19 @@ def _decode_dhtxx(bits: List[int]) -> Optional[Dict[str, float]]:
 
 
 class DhtDevice(Device):
-    """Read temperature and humidity from a DHT11/DHTXX sensor via pigpio."""
+    """Read temperature and humidity from a DHT11/DHTXX sensor via lgpio."""
 
-    def __init__(self, config: DeviceConfig, hardware: Optional[PigpioHardware] = None) -> None:
+    def __init__(self, config: DeviceConfig, hardware: Optional[LgpioHardware] = None) -> None:
         super().__init__(config)
         self.gpio = config.args.get("gpio", 13)
         self.model: Literal["DHT11", "DHTXX"] = config.args.get("model", "DHT11")
         if hardware is not None:
             self._hardware = hardware
         elif fake_devices_allowed():
-            from pybattery.device_drivers.dht.fakes import FakePi  # noqa: F811
-            self._hardware = PigpioHardware(pi=FakePi())
+            from pybattery.device_drivers.dht.fakes import FakePi
+            self._hardware = LgpioHardware(chip=FakePi())
         else:
-            self._hardware = PigpioHardware()
+            self._hardware = LgpioHardware()
 
     def read(self) -> Dict[str, Any]:
         """Read temperature and humidity from the DHT sensor."""
@@ -230,6 +252,6 @@ Device = DhtDevice
 
 __all__ = [
     "Device", "DhtDevice", "DhtConfig",
-    "PigpioHardware", "PiProtocol",
+    "LgpioHardware", "LgpioChip", "GpioChipProtocol",
     "_edges_to_bits", "_decode_dht11", "_decode_dhtxx",
 ]

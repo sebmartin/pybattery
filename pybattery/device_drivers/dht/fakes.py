@@ -42,11 +42,11 @@ def _dhtxx_bitstring(temp: float, humidity: float, checksum: Optional[int] = Non
 
 
 class FakePi:
-    """Fake pigpio.pi() that simulates DHT sensor responses.
+    """Fake lgpio chip that simulates DHT sensor responses.
 
-    When write(gpio, 0) is called (the trigger), it fires the registered
-    callback with realistic tick timings for the configured data, exercising
-    the real PigpioHardware.read_bits() timing logic.
+    Implements GpioChipProtocol. When write(gpio, 0) is called (the trigger),
+    it fires the registered callback with realistic nanosecond tick timings,
+    exercising the real LgpioHardware.read() timing logic.
     """
 
     def __init__(
@@ -62,12 +62,18 @@ class FakePi:
         else:
             self.data = _dht11_bitstring(temperature, humidity, checksum)
         self._error = error
-        self._callback: Optional[Callable[[int, int, int], None]] = None
+        self._callback: Optional[Callable[[int, int, int, int], None]] = None
         self._gpio = 0
-        self._tick = 20_000
+        self._tick_us = 20_000  # internal tick in µs; multiplied to ns when firing
         self.triggered_gpios: List[int] = []
 
-    def set_mode(self, gpio: int, mode: int) -> None:
+    def claim_output(self, gpio: int) -> None:
+        pass
+
+    def claim_input(self, gpio: int) -> None:
+        pass
+
+    def free(self, gpio: int) -> None:
         pass
 
     def write(self, gpio: int, level: int) -> None:
@@ -78,24 +84,24 @@ class FakePi:
         if self._callback is None or level != 0 or self.data is None:
             return
         # Response pulse: ~80µs high (skipped by _edges_to_bits)
-        self._tick += 80
-        self._callback(self._gpio, 1, self._tick)
-        self._tick += 80
-        self._callback(self._gpio, 0, self._tick)
+        self._tick_us += 80
+        self._callback(0, self._gpio, 1, self._tick_us * 1000)
+        self._tick_us += 80
+        self._callback(0, self._gpio, 0, self._tick_us * 1000)
 
         # 40 data bits, MSB first
         bitmask = 1 << 39
         while bitmask:
             bit = 1 if self.data & bitmask else 0
             # Low period before each bit (~50µs)
-            self._tick += 50
-            self._callback(self._gpio, 1, self._tick)
+            self._tick_us += 50
+            self._callback(0, self._gpio, 1, self._tick_us * 1000)
             # High period: ~26µs for 0-bit, ~70µs for 1-bit
-            self._tick += 70 if bit == 1 else 26
-            self._callback(self._gpio, 0, self._tick)
+            self._tick_us += 70 if bit == 1 else 26
+            self._callback(0, self._gpio, 0, self._tick_us * 1000)
             bitmask >>= 1
 
-    def callback(self, gpio: int, edge: int, func: Callable[[int, int, int], None]) -> FakeCallback:
+    def callback(self, gpio: int, func: Callable[[int, int, int, int], None]) -> FakeCallback:
         self._gpio = gpio
         self._callback = func
         return FakeCallback()
