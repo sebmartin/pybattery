@@ -191,6 +191,39 @@ def test_decode_dhtxx_insufficient_bits():
     assert _decode_dhtxx([0] * 39) is None
 
 
+# --- Out-of-range data validation tests ---
+
+@pytest.mark.parametrize("temp,humidity", [
+    (61, 50),    # temp too high for DHT11
+    (20, 101),   # humidity too high
+    (20, 8),     # humidity too low (DHT11 min is 9)
+    (-1, 50),    # temp below DHT11 minimum
+])
+def test_dht11_bad_data_returns_error(config, temp, humidity):
+    """DHT11 readings outside physical range return error."""
+    fake_pi = FakePi(temperature=temp, humidity=humidity, model="DHT11")
+    hw = PigpioHardware(pi=fake_pi)
+    device = DhtDevice(config, hardware=hw)
+    result = device.read()
+    assert result["status"] == "error"
+    assert result["temperature"] is None
+
+
+@pytest.mark.parametrize("temp,humidity", [
+    (-51.0, 50),   # temp too low for DHTXX
+    (136.0, 50),   # temp too high
+    (20.0, 111),   # humidity too high
+])
+def test_dhtxx_bad_data_returns_error(dhtxx_config, temp, humidity):
+    """DHTXX readings outside physical range return error."""
+    fake_pi = FakePi(temperature=temp, humidity=humidity, model="DHTXX")
+    hw = PigpioHardware(pi=fake_pi)
+    device = DhtDevice(dhtxx_config, hardware=hw)
+    result = device.read()
+    assert result["status"] == "error"
+    assert result["temperature"] is None
+
+
 # --- Edge-to-bits timing tests ---
 
 def _simulate_edges(data_bits):

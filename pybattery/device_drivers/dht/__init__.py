@@ -137,6 +137,10 @@ def _decode_dht11(bits: List[int]) -> Optional[Dict[str, float]]:
 
     humidity = bytes_[0] + bytes_[1] * 0.1
     temperature = bytes_[2] + bytes_[3] * 0.1
+
+    if not (0 <= temperature <= 60) or not (9 <= humidity <= 100):
+        return None
+
     return {"temperature": temperature, "humidity": humidity}
 
 
@@ -170,6 +174,9 @@ def _decode_dhtxx(bits: List[int]) -> Optional[Dict[str, float]]:
         sign = -1
         raw_temp &= 0x7FFF
     temperature = sign * raw_temp * 0.1
+
+    if not (-50 <= temperature <= 135) or not (0 <= humidity <= 110):
+        return None
 
     return {"temperature": temperature, "humidity": humidity}
 
