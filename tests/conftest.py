@@ -1,13 +1,13 @@
 import pytest
 
-from pybattery.device_drivers.dht.fakes import FakePi
+from pybattery.device_drivers.dht.fakes import FakeDht
 from pybattery.device_drivers.ds18b20.fakes import FakeSysfsReader
 from pybattery.device_drivers.lcd.fakes import FakeLcd
 
 
 @pytest.fixture
 def fake_pigpio():
-    return FakePi()
+    return FakeDht()
 
 
 @pytest.fixture

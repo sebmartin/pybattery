@@ -8,12 +8,11 @@ dependencies = [
     "minimalmodbus",
     "pyserial",
     "pyrover @ git+https://github.com/sebmartin/pyrover.git",
-    "pigpio",
 ]
 
 [dependency-groups]
 dev = ["pytest", "ruff", "pytest-cov"]
-rpi = ["RPLCD", "RPi.GPIO"]
+rpi = ["RPLCD", "RPi.GPIO", "adafruit-circuitpython-dht"]
 
 [project.scripts]
 pybattery = "pybattery.main:main"
