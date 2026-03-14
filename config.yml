@@ -10,7 +10,12 @@ devices:
     driver: ds18b20
     sensor_id: 28-0a9cd44619ac
 
-  thermo-interior:
+  thermo-exterior2:
+    description: Exterior temperature sensor
+    driver: ds18b20
+    sensor_id: 28-00000086bf64
+
+  dht:
     description: Interior temperature and humidity sensor
     driver: dht
     gpio: 27
